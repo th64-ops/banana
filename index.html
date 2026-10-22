@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#3047a8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="テスト作戦">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>テスト作戦</title>
+<style>
+:root{--bg:#eef1f6;--card:#fff;--ink:#1b2230;--muted:#5b6474;--line:#d7dce5;--accent:#3047a8;--warn:#c92a2a}
+@media (prefers-color-scheme:dark){:root{--bg:#12161f;--card:#1a2030;--ink:#e6e9f0;--muted:#9aa3b5;--line:#2c3447;--accent:#8ea6ff;--warn:#ff8787;color-scheme:dark}}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--ink);font-family:"Meiryo","メイリオ","MS Gothic","Hiragino Sans",sans-serif;padding:16px;box-sizing:border-box}
+form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;max-width:340px;width:100%;display:flex;flex-direction:column;gap:10px}
+h1{font-size:17px;margin:0}p{margin:0;font-size:13px;color:var(--muted)}
+input{font:inherit;font-size:17px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+button{font:inherit;padding:9px;border:0;border-radius:8px;background:var(--accent);color:var(--card)}
+#err{color:var(--warn)}
+</style>
+</head>
+<body>
+<form id="lock" hidden><h1>合言葉を入れてください</h1><p>最初の1回だけです。</p>
+<input id="pw" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="latin"><button>開く</button><p id="err" hidden>合言葉がちがいます</p></form>
+<script>
+const b=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function dec(pass){const d=await (await fetch('app.enc',{cache:'no-cache'})).json();const e=new TextEncoder(),s=crypto.subtle;
+ const base=await s.importKey('raw',e.encode(pass),'PBKDF2',false,['deriveKey']);
+ const k=await s.deriveKey({name:'PBKDF2',salt:b(d.salt),iterations:200000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+ return new TextDecoder().decode(await s.decrypt({name:'AES-GCM',iv:b(d.iv)},k,b(d.ct)));}
+async function go(pass,fromForm){try{const html=await dec(pass);try{localStorage.setItem('kimatsu-pass',pass)}catch(e){}
+ document.open();document.write(html);document.close();}catch(e){try{localStorage.removeItem('kimatsu-pass')}catch(x){}
+ document.getElementById('lock').hidden=false;if(fromForm)document.getElementById('err').hidden=false;}}
+document.getElementById('lock').addEventListener('submit',e=>{e.preventDefault();go(document.getElementById('pw').value.trim(),true);});
+let p='';try{p=decodeURIComponent(location.hash.slice(1))||localStorage.getItem('kimatsu-pass')||''}catch(e){}
+if(p)go(p,false);else document.getElementById('lock').hidden=false;
+</script>
+</body>
+</html>
